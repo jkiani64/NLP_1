@@ -1,3 +1,5 @@
+import numpy as np
+
 def clip(gradients, maxValue):
     '''
     Clips the gradients' values between minimum and maximum.
