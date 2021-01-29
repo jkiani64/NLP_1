@@ -1,4 +1,5 @@
 import numpy as np
+from rnn_utils import *
 
 def clip(gradients, maxValue):
     '''
@@ -22,3 +23,68 @@ def clip(gradients, maxValue):
     gradients = {"dWaa": dWaa, "dWax": dWax, "dWya": dWya, "db": db, "dby": dby}
     
     return gradients
+
+def sample(parameters, char_to_ix, seed):
+    """
+    Sample a sequence of characters according to a sequence of probability distributions output of the RNN
+
+    Arguments:
+    parameters -- python dictionary containing the parameters Waa, Wax, Wya, by, and b. 
+    char_to_ix -- python dictionary mapping each character to an index.
+    seed -- 
+
+    Returns:
+    indices -- a list of length n containing the indices of the sampled characters.
+    """
+    
+    # Retrieve parameters and relevant shapes from "parameters" dictionary
+    Waa, Wax, Wya, by, b = parameters['Waa'], parameters['Wax'], parameters['Wya'], parameters['by'], parameters['b']
+    vocab_size = by.shape[0]
+    n_a = Waa.shape[1]
+    
+    # Step 1: Create the one-hot vector x for the first character (initializing the sequence generation).
+    x = np.zeros((vocab_size, 1))
+    
+    #Initialize a_prev as zeros
+    a_prev = np.zeros((n_a, 1))
+    
+    # Create an empty list of indices, this is the list which will contain the list of indices of the characters to generate
+    indices = []
+    
+    # Idx is a flag to detect a newline character, we initialize it to -1
+    idx = -1 
+    
+    # Loop over time-steps t. At each time-step, sample a character from a probability distribution and append 
+    # its index to "indices". We'll stop if we reach 50 characters (which should be very unlikely with a well 
+    # trained model), which helps debugging and prevents entering an infinite loop. 
+    counter = 0
+    newline_character = char_to_ix['\n']
+    
+    while (idx != newline_character and counter != 50):
+        # Step 2: Forward propagate x
+        a = np.tanh(np.dot(Waa, a_prev) + np.dot(Wax, x) + b)
+        z = np.dot(Wya, a) + by
+        y = softmax(z)
+        
+        np.random.seed(counter + seed) 
+        
+        # Step 3: Sample the index of a character within the vocabulary from the probability distribution y
+        idx = np.random.choice(list(range(vocab_size)), p=y.ravel())
+        
+        # Append the index to "indices"
+        indices.append(idx)
+        
+        # Step 4: Overwrite the input character as the one corresponding to the sampled index.
+        x = np.zeros((vocab_size, 1))
+        x[idx] = 1
+        
+        # Update "a_prev" to be "a"
+        a_prev = a
+        
+        seed += 1
+        counter += 1
+        
+    if (counter == 50):
+        indices.append(char_to_ix['\n'])
+          
+    return indices
