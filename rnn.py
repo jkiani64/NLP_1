@@ -520,34 +520,35 @@ def clip(gradients, maxValue):
     
 #     return a_next, p_t
 
-# def rnn_forward(X, Y, a_prev, parameters, vocab_size = 27):
-#     """ Performs the forward propagation through the RNN and computes the cross-entropy loss.
-#     It returns the loss' value as well as a "cache" storing values to be used in the backpropagation.
-#     """
-#     # Initialize x, a, and y_hat as empty dictionaries
-#     x, a, y_hat = {}, {}, {}
+def rnn_forward_character(X, Y, a_prev, parameters, vocab_size = 27):
+    """ Performs the forward propagation through the RNN and computes the cross-entropy loss.
+    It returns the loss' value as well as a "cache" storing values to be used in the backpropagation.
+    """
+    # Initialize x, a, and y_hat as empty dictionaries
+    x, a, y_hat = {}, {}, {}
     
-#     a[-1] = np.copy(a_prev)
+    a[-1] = np.copy(a_prev)
     
-#     # Initialize the loss to 0
-#     loss = 0 
+    # Initialize the loss to 0
+    loss = 0 
     
-#     for t in range(len(X)):
+    for t in range(len(X)):
         
-#         # Set x[t] to be the one-hot vector representation of the t'th character in X.
-#         x[t] = np.zeros((vocab_size,1)) 
-#         if (X[t] != None):
-#             x[t][X[t]] = 1
+        # Set x[t] to be the one-hot vector representation of the t'th character in X.
+        x[t] = np.zeros((vocab_size,1)) 
+        if (X[t] != None):
+            x[t][X[t]] = 1
             
-#         # Run one step forward of the RNN
-#         a[t], y_hat[t] = rnn_step_forward(parameters, a[t-1], x[t])
+        # Run one step forward of the RNN
+        #a[t], y_hat[t] = rnn_step_forward(parameters, a[t-1], x[t])
+        a[t], y_hat[t], temp = rnn_cell_forward(xt, a_prev, parameters)
         
-#         # Update the loss by substracting the cross-entropy term of this time-step from it.
-#         loss -= np.log(y_hat[t][Y[t], 0])
+        # Update the loss by substracting the cross-entropy term of this time-step from it.
+        loss -= np.log(y_hat[t][Y[t], 0])
         
-#     cache = (y_hat, a, x)
+    cache = (y_hat, a, x)
         
-#     return loss, cache
+    return loss, cache
 
 
 # def rnn_step_backward(dy, gradients, parameters, x, a, a_prev):
