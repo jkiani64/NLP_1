@@ -285,6 +285,64 @@ def rnn_cell_backward(da_next, cache):
     
     return gradients
 
+def rnn_backward(da, caches):
+    """
+    Implement the backward pass for a RNN over an entire sequence of input data.
+
+    Arguments:
+    da -- Upstream gradients of all hidden states, of shape (n_a, m, T_x)
+    caches -- tuple containing information from the forward pass (rnn_forward)
+
+    Returns:
+    gradients -- python dictionary containing:
+                        dx -- Gradient w.r.t. the input data, numpy-array of shape (n_x, m, T_x)
+                        da0 -- Gradient w.r.t the initial hidden state, numpy-array of shape (n_a, m)
+                        dWax -- Gradient w.r.t the input's weight matrix, numpy-array of shape (n_a, n_x)
+                        dWaa -- Gradient w.r.t the hidden state's weight matrix, numpy-arrayof shape (n_a, n_a)
+                        dba -- Gradient w.r.t the bias, of shape (n_a, 1)
+    """
+
+    ### START CODE HERE ###
+
+    # Retrieve values from the first cache (t=1) of caches
+    (caches, x) = caches
+    (a1, a0, x1, parameters) = caches[0]
+
+    # Retrieve dimensions from da's and x1's shapes
+    (n_a, m, T_x) = da.shape
+    (n_x, m) = x1.shape
+
+    # initialize the gradients with the right sizes
+    dx = np.zeros((n_x, m, T_x))
+    da0 = np.zeros((n_a, m))
+    dWax = np.zeros((n_a, n_x))
+    dWaa = np.zeros((n_a, n_a))
+    dba = np.zeros((n_a, 1))
+    da_prevt = np.zeros((n_a, m))
+
+    # Loop through all the time steps
+    for t in reversed(range(T_x)):
+        # Compute gradients at time step t. Choose wisely the "da_next" and the "cache" to use in the backward propagation step. (≈1 line)
+        gradients = rnn_cell_backward(da[:,:,t] + da_prevt, caches[t])
+                    #rnn_cell_backward(da[:,:,t] + da_prevt, caches[t])
+        # Retrieve derivatives from gradients
+        dxt, da_prevt, dWaxt, dWaat, dbat = gradients['dxt'], gradients[
+            'da_prev'], gradients['dWax'], gradients['dWaa'], gradients['dba']
+        
+        # Increment global derivatives w.r.t parameters by adding their derivative at time-step t
+        dx[:,:,t] = dxt
+        dWax += dWaxt
+        dWaa += dWaat
+        dba += dbat
+    
+    # Set da0 to the gradient of a which has been backpropagated through all time-steps
+    da0 = da_prevt
+    
+    # Store the gradients in a python dictionary
+    gradients = {"dx": dx, "da0": da0, "dWax": dWax, "dWaa": dWaa, "dba": dba}
+
+    return gradients
+
 def clip(gradients, maxValue):
     '''
     Clips the gradients' values between minimum and maximum.
@@ -308,13 +366,13 @@ def clip(gradients, maxValue):
     
     return gradients
 
-def rnn_step_forward(parameters, a_prev, x):
+# def rnn_step_forward(parameters, a_prev, x):
     
-    Waa, Wax, Wya, by, b = parameters['Waa'], parameters['Wax'], parameters['Wya'], parameters['by'], parameters['b']
-    a_next = np.tanh(np.dot(Wax, x) + np.dot(Waa, a_prev) + b) # hidden state
-    p_t = softmax(np.dot(Wya, a_next) + by) # unnormalized log probabilities for next chars # probabilities for next chars 
+#     Waa, Wax, Wya, by, b = parameters['Waa'], parameters['Wax'], parameters['Wya'], parameters['by'], parameters['b']
+#     a_next = np.tanh(np.dot(Wax, x) + np.dot(Waa, a_prev) + b) # hidden state
+#     p_t = softmax(np.dot(Wya, a_next) + by) # unnormalized log probabilities for next chars # probabilities for next chars 
     
-    return a_next, p_t
+#     return a_next, p_t
 
 # def rnn_forward(X, Y, a_prev, parameters, vocab_size = 27):
 #     """ Performs the forward propagation through the RNN and computes the cross-entropy loss.
@@ -346,41 +404,41 @@ def rnn_step_forward(parameters, a_prev, x):
 #     return loss, cache
 
 
-def rnn_step_backward(dy, gradients, parameters, x, a, a_prev):
+# def rnn_step_backward(dy, gradients, parameters, x, a, a_prev):
     
-    gradients['dWya'] += np.dot(dy, a.T)
-    gradients['dby'] += dy
-    da = np.dot(parameters['Wya'].T, dy) + gradients['da_next'] # backprop into h
-    daraw = (1 - a * a) * da # backprop through tanh nonlinearity
-    gradients['db'] += daraw
-    gradients['dWax'] += np.dot(daraw, x.T)
-    gradients['dWaa'] += np.dot(daraw, a_prev.T)
-    gradients['da_next'] = np.dot(parameters['Waa'].T, daraw)
-    return gradients
+#     gradients['dWya'] += np.dot(dy, a.T)
+#     gradients['dby'] += dy
+#     da = np.dot(parameters['Wya'].T, dy) + gradients['da_next'] # backprop into h
+#     daraw = (1 - a * a) * da # backprop through tanh nonlinearity
+#     gradients['db'] += daraw
+#     gradients['dWax'] += np.dot(daraw, x.T)
+#     gradients['dWaa'] += np.dot(daraw, a_prev.T)
+#     gradients['da_next'] = np.dot(parameters['Waa'].T, daraw)
+#     return gradients
 
 
-def rnn_backward(X, Y, parameters, cache):
-    # Initialize gradients as an empty dictionary
-    gradients = {}
+# def rnn_backward(X, Y, parameters, cache):
+#     # Initialize gradients as an empty dictionary
+#     gradients = {}
     
-    # Retrieve from cache and parameters
-    (y_hat, a, x) = cache
-    Waa, Wax, Wya, by, b = parameters['Waa'], parameters['Wax'], parameters['Wya'], parameters['by'], parameters['b']
+#     # Retrieve from cache and parameters
+#     (y_hat, a, x) = cache
+#     Waa, Wax, Wya, by, b = parameters['Waa'], parameters['Wax'], parameters['Wya'], parameters['by'], parameters['b']
     
-    # each one should be initialized to zeros of the same dimension as its corresponding parameter
-    gradients['dWax'], gradients['dWaa'], gradients['dWya'] = np.zeros_like(Wax), np.zeros_like(Waa), np.zeros_like(Wya)
-    gradients['db'], gradients['dby'] = np.zeros_like(b), np.zeros_like(by)
-    gradients['da_next'] = np.zeros_like(a[0])
+#     # each one should be initialized to zeros of the same dimension as its corresponding parameter
+#     gradients['dWax'], gradients['dWaa'], gradients['dWya'] = np.zeros_like(Wax), np.zeros_like(Waa), np.zeros_like(Wya)
+#     gradients['db'], gradients['dby'] = np.zeros_like(b), np.zeros_like(by)
+#     gradients['da_next'] = np.zeros_like(a[0])
     
-    ### START CODE HERE ###
-    # Backpropagate through time
-    for t in reversed(range(len(X))):
-        dy = np.copy(y_hat[t])
-        dy[Y[t]] -= 1
-        gradients = rnn_step_backward(dy, gradients, parameters, x[t], a[t], a[t-1])
-    ### END CODE HERE ###
+#     ### START CODE HERE ###
+#     # Backpropagate through time
+#     for t in reversed(range(len(X))):
+#         dy = np.copy(y_hat[t])
+#         dy[Y[t]] -= 1
+#         gradients = rnn_step_backward(dy, gradients, parameters, x[t], a[t], a[t-1])
+#     ### END CODE HERE ###
     
-    return gradients, a
+#     return gradients, a
 
 def update_parameters(parameters, gradients, lr):
 
