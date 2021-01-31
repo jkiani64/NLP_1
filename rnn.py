@@ -723,3 +723,6 @@ def initialize_parameters(n_a, n_x, n_y, seed = 1):
     parameters = {"Wax": Wax, "Waa": Waa, "Wya": Wya, "b": b,"by": by}
     
     return parameters
+
+def get_initial_loss(vocab_size, seq_length):
+    return -np.log(1.0/vocab_size)*seq_length
